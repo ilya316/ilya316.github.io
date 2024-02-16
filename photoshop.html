@@ -73,7 +73,21 @@
 </head>
 <body>
     <main>
+        <div class="modal">
+            <label for="imageSelect">Select Image</label>
+            <input type="file" id="imageSelect" />
+            <input type="text" id="urlInput"/>
+            <button id="loadButton">Load</button>
+        </div>
         <ul class="sidebar">
+            <!-- <li>
+                <button id="openModal">
+                    Load Image
+                </button>
+            </li> -->
+            <li>
+                <div id="selectedColor" style="width: 32px; height: 32px; background-color: black;"></div>
+            </li>
             <li>
                 <input type="radio" id="nothing" value="nothing" name="panel" checked />
                 <label for="nothing">X</label>
@@ -99,22 +113,51 @@
         var info = document.getElementById("info");
         var ctx = canvas.getContext("2d" , { willReadFrequently: true });
         var colorSquare = document.getElementById("color")
+        var selectedColor = document.getElementById("selectedColor")
 
-        var img = new Image()
-        img.crossOrigin = 'anonymous'
-        img.src = "https://helpx.adobe.com/content/dam/help/en/photoshop/using/convert-color-image-black-white/jcr_content/main-pars/before_and_after/image-before/Landscape-Color.jpg"
-        
-        widthScale = img.width/canvas.width
-        heightScale = img.height/canvas.height
-        scale = Math.max(widthScale, heightScale)
-        img.onload = function () {
-            var widthScale = canvas.width / img.width;
-            var heightScale = canvas.height / img.height;
-            var scale = Math.min(widthScale, heightScale);
+        var loadButton = document.getElementById("loadButton");
+        var urlInput = document.getElementById("urlInput");
+        loadButton.addEventListener("click", function() {
+            var img = new Image()
+            img.crossOrigin = 'anonymous'
             
-            ctx.drawImage(img, 0, 0, img.width * scale, img.height * scale);
+            img.onload = function() {
+                var widthScale = canvas.width / img.width;
+                var heightScale = canvas.height / img.height;
+                var scale = Math.min(widthScale, heightScale);
+                ctx.drawImage(img, 0, 0, img.width * scale, img.height * scale);
+            }
+            img.src = urlInput.value;
+        })
+
+        
+        //img.src = "https://helpx.adobe.com/content/dam/help/en/photoshop/using/convert-color-image-black-white/jcr_content/main-pars/before_and_after/image-before/Landscape-Color.jpg"
+        
+        // img.onload = function () {
+        //     var widthScale = canvas.width / img.width;
+        //     var heightScale = canvas.height / img.height;
+        //     var scale = Math.min(widthScale, heightScale);
+            
+        //     ctx.drawImage(img, 0, 0, img.width * scale, img.height * scale);
+        // }
+
+        
+        document.getElementById('imageSelect').addEventListener('change', handleFileImage, false);
+
+        function handleFileImage(e) {
+            var img = new Image()
+            img.crossOrigin = 'anonymous'
+            
+            img.onload = function() {
+                var widthScale = canvas.width / img.width;
+                var heightScale = canvas.height / img.height;
+                var scale = Math.min(widthScale, heightScale);
+                ctx.drawImage(img, 0, 0, img.width * scale, img.height * scale);
+            }
+            img.src = URL.createObjectURL(e.target.files[0]);
         }
-        console.log(canvas.width, canvas.clientWidth, img.width, img.clientWidth)
+
+        //console.log(canvas.width, canvas.clientWidth, img.width, img.clientWidth)
         canvas.width = canvas.clientWidth
         canvas.height = canvas.clientHeight
         canvas.addEventListener('mousemove', function(event) {
@@ -135,7 +178,8 @@
             var pixel = ctx.getImageData(x, y, 1, 1).data;
 
             var color = 'rgb(' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ')';
-            console.log(color)
+            console.log(color);
+            selectedColor.style.background = color;
         });
     </script>
 </body>

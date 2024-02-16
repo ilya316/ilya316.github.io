@@ -13,7 +13,7 @@
         main {
             height: 100vh;
             overflow: hidden;
-            background-color: rgb(99, 99, 99);
+            background-color: rgb(255, 255, 255);
         }
         canvas {
             display: block;
@@ -69,15 +69,20 @@
             box-shadow: none;
         }
 
+        p {
+            font-weight: bold;
+            color: black;
+        }
+
     </style>
 </head>
 <body>
     <main>
         <div class="modal">
-            <label for="imageSelect">Select Image</label>
+            <label for="imageSelect">Выберите картинку</label>
             <input type="file" id="imageSelect" />
             <input type="text" id="urlInput"/>
-            <button id="loadButton">Load</button>
+            <button id="loadButton">Загрузить по ссылке</button>
         </div>
         <ul class="sidebar">
             <!-- <li>
@@ -85,8 +90,12 @@
                     Load Image
                 </button>
             </li> -->
-            <li>
-                <div id="selectedColor" style="width: 32px; height: 32px; background-color: black;"></div>
+            <li style="display: flex; flex-direction: column; align-items: center;">
+                <p id="infoXfixed">X: 0</p>
+                <p id="infoYfixed">Y: 0</p>
+                <div id="color" style="width: 0px; height: 0px; border: 16px solid black;"></div>
+                <p id="infoX">X: 0</p>
+                <p id="infoY">Y: 0</p>
             </li>
             <li>
                 <input type="radio" id="nothing" value="nothing" name="panel" checked />
@@ -100,20 +109,19 @@
             </li>
         </ul>
         <canvas id="canvas" width="1920px" height="1080px">
-        </canvas>
-        <div style="display: flex;">
-            <p id="info"></p>
-            <div id="color" style="width: 16px; height: 16px;"></div>
-        </div>
-       
+        </canvas>       
     </main>
     <script>
         var canvas = document.getElementById("canvas");
 
-        var info = document.getElementById("info");
+        var infoX = document.getElementById("infoX");
+        var infoY = document.getElementById("infoY");
+
+        var infoXfixed = document.getElementById("infoXfixed");
+        var infoYfixed = document.getElementById("infoYfixed");
+
         var ctx = canvas.getContext("2d" , { willReadFrequently: true });
         var colorSquare = document.getElementById("color")
-        var selectedColor = document.getElementById("selectedColor")
 
         var loadButton = document.getElementById("loadButton");
         var urlInput = document.getElementById("urlInput");
@@ -125,6 +133,7 @@
                 var widthScale = canvas.width / img.width;
                 var heightScale = canvas.height / img.height;
                 var scale = Math.min(widthScale, heightScale);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(img, 0, 0, img.width * scale, img.height * scale);
             }
             img.src = urlInput.value;
@@ -147,11 +156,11 @@
         function handleFileImage(e) {
             var img = new Image()
             img.crossOrigin = 'anonymous'
-            
             img.onload = function() {
                 var widthScale = canvas.width / img.width;
                 var heightScale = canvas.height / img.height;
                 var scale = Math.min(widthScale, heightScale);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(img, 0, 0, img.width * scale, img.height * scale);
             }
             img.src = URL.createObjectURL(e.target.files[0]);
@@ -168,8 +177,10 @@
 
             var color = 'rgb(' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ')';
 
-            info.textContent = 'X: ' + x + ', Y: ' + y + ', Color: ' + color;
-            colorSquare.style.backgroundColor = color;
+            infoX.textContent = 'X: ' + x;
+            infoY.textContent = 'Y: ' + Math.ceil(y);
+            colorSquare.style.borderBottomColor = color;
+            colorSquare.style.borderRightColor = color;
         });
         canvas.addEventListener('click', function(event) {
             var x = event.clientX - canvas.getBoundingClientRect().left;
@@ -178,8 +189,10 @@
             var pixel = ctx.getImageData(x, y, 1, 1).data;
 
             var color = 'rgb(' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ')';
-            console.log(color);
-            selectedColor.style.background = color;
+            infoXfixed.textContent = 'X: ' + x;
+            infoYfixed.textContent = 'Y: ' + Math.ceil(y);
+            colorSquare.style.borderTopColor = color;
+            colorSquare.style.borderLeftColor = color;
         });
     </script>
 </body>

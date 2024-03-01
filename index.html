@@ -17,7 +17,7 @@
         }
         canvas {
             display: block;
-            width: calc(100% - 70px);
+            width: calc(100% - 95px);
             height: calc(100% - 60px);
             margin: 20px 20px 0px 75px;
             background-color: rgb(45, 45, 45);
@@ -92,10 +92,16 @@
             </li> -->
             <li style="display: flex; flex-direction: column; align-items: center;">
                 <p id="infoXfixed">X: 0</p>
-                <p id="infoYfixed">Y: 0</p>
+                <p id="infoYfixed">Y: 0</p><br>
+                <p id="infoRfixed">R: 0</p>
+                <p id="infoGfixed">G: 0</p>
+                <p id="infoBfixed">B: 0</p>
                 <div id="color" style="width: 0px; height: 0px; border: 16px solid black;"></div>
                 <p id="infoX">X: 0</p>
-                <p id="infoY">Y: 0</p>
+                <p id="infoY">Y: 0</p><br>
+                <p id="infoR">R: 0</p>
+                <p id="infoG">G: 0</p>
+                <p id="infoB">B: 0</p>
             </li>
             <li>
                 <input type="radio" id="nothing" value="nothing" name="panel" checked />
@@ -116,9 +122,15 @@
 
         var infoX = document.getElementById("infoX");
         var infoY = document.getElementById("infoY");
+        var infoY = document.getElementById("infoR");
+        var infoY = document.getElementById("infoG");
+        var infoY = document.getElementById("infoB");
 
         var infoXfixed = document.getElementById("infoXfixed");
         var infoYfixed = document.getElementById("infoYfixed");
+        var infoRfixed = document.getElementById("infoRfixed");
+        var infoGfixed = document.getElementById("infoGfixed");
+        var infoBfixed = document.getElementById("infoBfixed");
 
         var ctx = canvas.getContext("2d" , { willReadFrequently: true });
         var colorSquare = document.getElementById("color")
@@ -179,6 +191,9 @@
 
             infoX.textContent = 'X: ' + x;
             infoY.textContent = 'Y: ' + Math.ceil(y);
+            infoR.textContent = 'R: ' + pixel[0];
+            infoG.textContent = 'G: ' + pixel[1];
+            infoB.textContent = 'B: ' + pixel[2];
             colorSquare.style.borderBottomColor = color;
             colorSquare.style.borderRightColor = color;
         });
@@ -191,6 +206,9 @@
             var color = 'rgb(' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ')';
             infoXfixed.textContent = 'X: ' + x;
             infoYfixed.textContent = 'Y: ' + Math.ceil(y);
+            infoRfixed.textContent = 'R: ' + pixel[0];
+            infoGfixed.textContent = 'G: ' + pixel[1];
+            infoBfixed.textContent = 'B: ' + pixel[2];
             colorSquare.style.borderTopColor = color;
             colorSquare.style.borderLeftColor = color;
         });

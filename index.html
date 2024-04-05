@@ -15,12 +15,17 @@
             overflow: hidden;
             background-color: rgb(255, 255, 255);
         }
-        canvas {
+        .canvas_wrapper {
             display: block;
             width: calc(100% - 95px);
             height: calc(100% - 60px);
             margin: 20px 20px 0px 75px;
             background-color: rgb(45, 45, 45);
+            overflow: scroll;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
         }
         .sidebar {
             width: 75px;
@@ -73,7 +78,20 @@
             font-weight: bold;
             color: black;
         }
-
+        dialog {
+            position: absolute;
+            top:50%;
+            left:50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+        }
+        .dialog__content {
+            display: flex;
+            flex-direction: column;
+        }
+        .modal {
+            margin-left: 75px;
+        }
     </style>
 </head>
 <body>
@@ -83,7 +101,25 @@
             <input type="file" id="imageSelect" />
             <input type="text" id="urlInput"/>
             <button id="loadButton">Загрузить по ссылке</button>
+            <button id="sizeButton">Изменить размер</button>
+            <button id="download">Скачать</button>
         </div>
+        <dialog id="dialog">
+            <div class="dialog__content">
+                <label for="width">Ширина:</label>
+                <input type="number" id="width" min="1">
+                <label for="height">Высота:</label>
+                <input type="number" id="height" min="1">
+                <div>
+                    <input type="checkbox" id="maintain-aspect-ratio" checked>
+                    <label for="maintain-aspect-ratio">Сохранять пропорции</label>
+                </div>
+                <div>
+                    <button id="done">done</button>
+                    <button id="close">close</button>
+                </div>
+            </div>
+        </dialog>
         <ul class="sidebar" style="list-style: none;">
             <!-- <li>
                 <button id="openModal">
@@ -104,18 +140,25 @@
                 <p id="infoB">B: 0</p>
             </li>
             <li>
-                <input type="radio" id="nothing" value="nothing" name="panel" checked />
-                <label for="nothing">X</label>
+                <div id="controls">
+                    <select id="scale-selector">
+                        <option value="0.12">12%</option>
+                        <option value="0.25">25%</option>
+                        <option value="0.5">50%</option>
+                        <option value="1" selected>100%</option>
+                        <option value="2">200%</option>
+                        <option value="3">300%</option>
+                    </select>
+                </div>
             </li>
             <li>
-                <input type="radio" id="pipette" value="pipette" name="panel" />
-                <label for="pipette">
-                    <img src="https://cdn.icon-icons.com/icons2/788/PNG/512/pipette_icon-icons.com_65005.png" alt="Пипетка">
-                </label>
+
             </li>
         </ul>
-        <canvas id="canvas" width="1920px" height="1080px">
-        </canvas>       
+        <div class="canvas_wrapper">
+            <canvas id="canvas" width="1920px" height="1080px">
+            </canvas> 
+        </div>    
     </main>
     <script>
         var canvas = document.getElementById("canvas");
@@ -137,20 +180,123 @@
 
         var loadButton = document.getElementById("loadButton");
         var urlInput = document.getElementById("urlInput");
+
+        var img = new Image()
+        img.crossOrigin = 'anonymous'
+        
+        img.onload = function() {
+            var widthScale = (canvas.width - 100) / img.width;
+            var heightScale = (canvas.height - 100) / img.height;
+            var scale = Math.min(widthScale, heightScale);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, Math.max(50, (canvas.width - img.width * scale)/2), Math.max(50, (canvas.height - img.height * scale)/2), img.width * scale, img.height * scale);
+        }
+
         loadButton.addEventListener("click", function() {
-            var img = new Image()
-            img.crossOrigin = 'anonymous'
-            
-            img.onload = function() {
-                var widthScale = canvas.width / img.width;
-                var heightScale = canvas.height / img.height;
-                var scale = Math.min(widthScale, heightScale);
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, 0, 0, img.width * scale, img.height * scale);
-            }
             img.src = urlInput.value;
         })
 
+        const scaleSelector = document.getElementById('scale-selector');
+
+        scaleSelector.addEventListener('change', function() {
+            const scale = parseFloat(scaleSelector.value);
+            scaleImage(scale);
+        });
+
+        function scaleImage(factor) {
+            var widthScale = (canvas.width - 100) / img.width;
+            var heightScale = (canvas.height - 100) / img.height;
+            var scale = Math.min(widthScale, heightScale) * factor;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, Math.max(50, (canvas.width - img.width * scale)/2), Math.max(50, (canvas.height - img.height * scale)/2), img.width * scale, img.height * scale);
+        }   
+
+        const scaleButton = document.getElementById('sizeButton');
+        const dialog = document.getElementById('dialog');
+        const done = document.getElementById('done');
+        const close = document.getElementById('close');
+        const width = document.getElementById('width');
+        const height = document.getElementById('height');
+        const download = document.getElementById('download');
+        const maintain = document.getElementById('maintain-aspect-ratio')
+        let ratio = width.value / height.value
+
+        download.addEventListener('click', function() {
+            var link = document.createElement('a');
+            link.download = 'filename.png';
+            const originCanvas = document.createElement('canvas')
+            const originCtx = originCanvas.getContext('2d');
+            originCanvas.width = img.width;
+            originCanvas.height = img.height;
+            originCtx.drawImage(img, 0, 0);
+            document.body.appendChild(originCanvas);
+            link.href = originCanvas.toDataURL()
+            link.click();
+            document.body.removeChild(originCanvas);
+        });
+
+        scaleButton.addEventListener('click', function() {
+            console.log(img.width, img.height);
+            width.value = img.width
+            height.value = img.height
+            ratio = width.value / height.value
+            dialog.showModal()
+        });
+
+        width.addEventListener('input', function() {
+            if (maintain.checked) {
+                height.value = Math.round(width.value / ratio)
+            }
+        })
+
+        height.addEventListener('input', function() {
+            if (maintain.checked) {
+                width.value = Math.round(height.value * ratio)
+            }
+        })
+
+        done.addEventListener('click', function() {
+            // Интерполяцияяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя
+            dialog.close()
+            const originCanvas = document.createElement('canvas')
+            const originCtx = originCanvas.getContext('2d');
+            originCanvas.width = img.width;
+            originCanvas.height = img.height;
+            originCtx.drawImage(img, 0, 0, originCanvas.width, originCanvas.height);
+            const originalImageData = ctx.getImageData(0, 0, originCanvas.width, originCanvas.height);
+
+            const helpCanvas = document.createElement('canvas')
+            const helpCtx = helpCanvas.getContext('2d');
+            helpCanvas.width = width.value;
+            helpCanvas.height = height.value;
+            const newImageData = helpCtx.createImageData(helpCanvas.width, helpCanvas.height);
+
+            for (let y = 0; y < helpCanvas.height; y++) {
+                for (let x = 0; x < helpCanvas.width; x++) {
+                    const originalX = Math.round(x * (originCanvas.width / helpCanvas.width));
+                    const originalY = Math.round(y * (originCanvas.height / helpCanvas.height));
+
+                    const index = (originalY * originalImageData.width + originalX) * 4;
+                    const r = originalImageData.data[index];
+                    const g = originalImageData.data[index + 1];
+                    const b = originalImageData.data[index + 2];
+                    const a = originalImageData.data[index + 3];
+
+                    const newIndex = (y * newImageData.width + x) * 4;
+                    newImageData.data[newIndex] = r;
+                    newImageData.data[newIndex + 1] = g;
+                    newImageData.data[newIndex + 2] = b;
+                    newImageData.data[newIndex + 3] = a;
+                }
+                }
+                helpCtx.putImageData(newImageData,0 ,0);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.putImageData(newImageData, Math.max(50, (canvas.width - newImageData.width)/2), Math.max(50, (canvas.height - newImageData.height)/2));
+                img.src = helpCanvas.toDataURL()
+        });
+        close.addEventListener('click', function() {
+            dialog.close()
+        })
         
         //img.src = "https://helpx.adobe.com/content/dam/help/en/photoshop/using/convert-color-image-black-white/jcr_content/main-pars/before_and_after/image-before/Landscape-Color.jpg"
         

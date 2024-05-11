@@ -88,9 +88,31 @@
         .dialog__content {
             display: flex;
             flex-direction: column;
+            gap: 5px;
         }
         .modal {
             margin-left: 75px;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            border-bottom: 1px dotted black;
+        }
+
+        .tooltip-text {
+        visibility: hidden;
+        width: 200px;
+        background-color: #555;
+        color: #fff;
+        text-align: center;
+        padding: 5px;
+        position: absolute;
+        bottom: 125%;
+        margin-left: -160px;
+        }
+
+        .tooltip:hover .tooltip-text {
+        visibility: visible;
         }
     </style>
 </head>
@@ -106,6 +128,13 @@
         </div>
         <dialog id="dialog">
             <div class="dialog__content">
+                <p id="before"></p>
+                <p id="after"></p>
+                <label for="valueType">Единицы измерения:</label>
+                <select id="valueType">
+                    <option value="pixels">В пикселях</option>
+                    <option value="percent">В процентах</option>
+                </select>
                 <label for="width">Ширина:</label>
                 <input type="number" id="width" min="1">
                 <label for="height">Высота:</label>
@@ -113,6 +142,15 @@
                 <div>
                     <input type="checkbox" id="maintain-aspect-ratio" checked>
                     <label for="maintain-aspect-ratio">Сохранять пропорции</label>
+                </div>
+                <label for="interpolationMethod">Алгоритм интерполяции:</label>
+                <div>
+                    <select id="interpolationMethod">
+                        <option value="nearestNeighbor">Ближайший сосед</option>
+                    </select>
+                    <div class="tooltip">?
+                    <div class="tooltip-text">метод интерполяции, при котором в качестве промежуточного значения выбирается ближайшее известное значение</div>
+                    </div>
                 </div>
                 <div>
                     <button id="done">done</button>
@@ -181,6 +219,9 @@
         var loadButton = document.getElementById("loadButton");
         var urlInput = document.getElementById("urlInput");
 
+        var before = document.getElementById("before");
+        var after = document.getElementById("after");
+
         var img = new Image()
         img.crossOrigin = 'anonymous'
         
@@ -235,23 +276,46 @@
             document.body.removeChild(originCanvas);
         });
 
+        const valueType = document.getElementById('valueType');
+
+        valueType.addEventListener('change', function() {
+            if (valueType.value == 'pixels') {
+                width.value = img.width
+                height.value = img.height
+            }
+            if (valueType.value == 'percent') {
+                width.value = 100
+                height.value = 100
+            }
+        })
+
         scaleButton.addEventListener('click', function() {
             console.log(img.width, img.height);
             width.value = img.width
             height.value = img.height
             ratio = width.value / height.value
+            before.textContent = "Было: " + ((img.width * img.height) / 1000000).toFixed(2) + ' Мегапикселей'
+            after.textContent = "Стало: " + ((img.width * img.height) / 1000000).toFixed(2) + ' Мегапикселей'
             dialog.showModal()
         });
 
         width.addEventListener('input', function() {
+            after.textContent = "Стало: " + ((width.value * height.value) / 1000000).toFixed(2) + ' Мегапикселей'
             if (maintain.checked) {
                 height.value = Math.round(width.value / ratio)
+                if (valueType.value == 'percent') {
+                    height.value = width.value
+                }
             }
         })
 
         height.addEventListener('input', function() {
+            after.textContent = "Стало: " + ((width.value * height.value) / 1000000).toFixed(2) + ' Мегапикселей'
             if (maintain.checked) {
                 width.value = Math.round(height.value * ratio)
+                if (valueType.value == 'percent') {
+                    width.value = height.value
+                }
             }
         })
 
@@ -267,8 +331,14 @@
 
             const helpCanvas = document.createElement('canvas')
             const helpCtx = helpCanvas.getContext('2d');
-            helpCanvas.width = width.value;
-            helpCanvas.height = height.value;
+            if (valueType.value == 'percent') {
+                helpCanvas.width = img.width * width.value / 100;
+                helpCanvas.height = img.height * height.value / 100;
+            }
+            if (valueType.value == 'pixels') {
+                helpCanvas.width = width.value;
+                helpCanvas.height = height.value;
+            }
             const newImageData = helpCtx.createImageData(helpCanvas.width, helpCanvas.height);
 
             for (let y = 0; y < helpCanvas.height; y++) {

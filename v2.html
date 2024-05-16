@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photoshop</title>
+    <style>
+        *, *::after, *::before {
+            margin: 0;
+            padding: 0;
+        }
+
+        main {
+            height: 100vh;
+            overflow: hidden;
+            background-color: rgb(255, 255, 255);
+        }
+        .canvas_wrapper {
+            display: block;
+            width: calc(100% - 95px);
+            height: calc(100% - 60px);
+            margin: 20px 20px 0px 75px;
+            background-color: rgb(45, 45, 45);
+            /* overflow: hidden; */
+            position: relative;
+            overflow: hidden;
+        }
+        canvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .sidebar {
+            width: 75px;
+            margin-top:40px;
+            position: fixed;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar > li {
+            width: 100%;
+        }
+
+        img {
+            width: 16px;
+        }
+
+        .sidebar input {
+            position: absolute !important;
+            clip: rect(0, 0, 0, 0);
+            height: 1px;
+            width: 1px;
+            border: 0;
+            overflow: hidden;
+        }
+
+        .sidebar label {
+            display: block;
+            width: 16px;
+            height: 16px;
+            background-color: #e4e4e4;
+            color: rgba(0, 0, 0, 0.6);
+            font-size: 14px;
+            line-height: 1;
+            text-align: center;
+            padding: 8px;
+            margin-right: -1px;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px rgba(255, 255, 255, 0.1);
+            transition: all 0.1s ease-in-out;
+        }
+        .sidebar label:hover {
+            cursor: pointer;
+        }
+
+        .sidebar input:checked + label {
+            background-color: #a5dc86;
+            box-shadow: none;
+        }
+
+        p {
+            font-weight: bold;
+            color: black;
+        }
+        dialog {
+            position: absolute;
+            top:50%;
+            left:50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+        }
+        .dialog__content {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        #colorWindow {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 20px;
+            box-shadow: 0 0 10px black;
+        }
+        .color__content {
+            padding: 10px;
+            background-color: white;
+            display: flex;
+        }
+        .color__left, .color__right {
+            padding: 10px;
+        }
+
+        .modal {
+            margin-left: 75px;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            border-bottom: 1px dotted black;
+        }
+
+        .tooltip-text {
+        visibility: hidden;
+        width: 200px;
+        background-color: #555;
+        color: #fff;
+        text-align: center;
+        padding: 5px;
+        position: absolute;
+        bottom: 125%;
+        margin-left: -160px;
+        }
+
+        .tooltip:hover .tooltip-text {
+        visibility: visible;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="modal">
+            <label for="imageSelect">Выберите картинку</label>
+            <input type="file" id="imageSelect" />
+            <input type="text" id="urlInput"/>
+            <button id="loadButton">Загрузить по ссылке</button>
+            <button id="sizeButton">Изменить размер</button>
+            <button id="download">Скачать</button>
+        </div>
+        <dialog id="dialog">
+            <div class="dialog__content">
+                <p id="before"></p>
+                <p id="after"></p>
+                <label for="valueType">Единицы измерения:</label>
+                <select id="valueType">
+                    <option value="pixels">В пикселях</option>
+                    <option value="percent">В процентах</option>
+                </select>
+                <label for="width">Ширина:</label>
+                <input type="number" id="width" min="1">
+                <label for="height">Высота:</label>
+                <input type="number" id="height" min="1">
+                <div>
+                    <input type="checkbox" id="maintain-aspect-ratio" checked>
+                    <label for="maintain-aspect-ratio">Сохранять пропорции</label>
+                </div>
+                <label for="interpolationMethod">Алгоритм интерполяции:</label>
+                <div>
+                    <select id="interpolationMethod">
+                        <option value="nearestNeighbor">Ближайший сосед</option>
+                    </select>
+                    <div class="tooltip">?
+                    <div class="tooltip-text">метод интерполяции, при котором в качестве промежуточного значения выбирается ближайшее известное значение</div>
+                    </div>
+                </div>
+                <div>
+                    <button id="done">done</button>
+                    <button id="close">close</button>
+                </div>
+            </div>
+        </dialog>
+        <div id="colorWindow" class="color__content" style="display: none;">
+            <div class="color__left" style="border-right: 1px solid black ;">
+                <div class="square1" id="square1"></div>
+                <p id="infoXsquare1">X: 0</p>
+                <p id="infoYsquare1">Y: 0</p><br>
+                <p id="infoRsquare1">R: 0</p>
+                <p id="infoGsquare1">G: 0</p>
+                <p id="infoBsquare1">B: 0</p>
+            </div>
+            <div class="color__right">
+                <div class="square2" id="square2"></div>
+                <p id="infoXsquare2">X: 0</p>
+                <p id="infoYsquare2">Y: 0</p><br>
+                <p id="infoRsquare2">R: 0</p>
+                <p id="infoGsquare2">G: 0</p>
+                <p id="infoBsquare2">B: 0</p>
+            </div>
+            </div>
+        </div>
+        <ul class="sidebar" style="list-style: none;">
+            <li style="display: flex; flex-direction: column; align-items: center;">
+                <p id="infoXfixed">X: 0</p>
+                <p id="infoYfixed">Y: 0</p><br>
+                <p id="infoRfixed">R: 0</p>
+                <p id="infoGfixed">G: 0</p>
+                <p id="infoBfixed">B: 0</p>
+                <div id="colorSquare" style="width: 0px; height: 0px; border: 16px solid black;"></div>
+                <p id="infoX">X: 0</p>
+                <p id="infoY">Y: 0</p><br>
+                <p id="infoR">R: 0</p>
+                <p id="infoG">G: 0</p>
+                <p id="infoB">B: 0</p>
+            </li>
+            <li>
+                <div id="controls">
+                    <select id="scale-selector">
+                        <option value="0.12">12%</option>
+                        <option value="0.25">25%</option>
+                        <option value="0.5">50%</option>
+                        <option value="1" selected>100%</option>
+                        <option value="2">200%</option>
+                        <option value="3">300%</option>
+                    </select>
+                </div>
+            </li>
+            <li>
+                <button id="colorButton">Пипетка</button>
+            </li>
+        </ul>
+        <div id="canvasDomain" class="canvas_wrapper">
+            <!-- <canvas id="canvas" width="1920px" height="1080px">
+            </canvas>  -->
+        </div>    
+    </main>
+    <script>
+        let canvas = document.createElement("canvas");
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const canvasDomain = document.getElementById("canvasDomain");
+
+        var img = new Image();
+        img.crossOrigin = 'anonymous';
+        let scale = 1;
+        const loadButton = document.getElementById("loadButton");
+
+        loadButton.addEventListener("click", function() {
+            img.src = urlInput.value;
+            canvas.width = img.width;
+            canvas.height = img.height;
+            canvas.style.removeProperty("width");
+            canvas.style.removeProperty("height");
+            canvasDomain.appendChild(canvas);
+            ctx.drawImage(img, 0, 0);
+            if (canvas.width > canvas.height) {
+                canvas.style.width = canvasDomain.offsetWidth - 100 + 'px';
+            } else {
+                canvas.style.height = canvasDomain.offsetHeight - 100 + 'px';
+            }
+        })
+
+        //Color picker
+        const colorSquare = document.getElementById('colorSquare')
+        canvas.addEventListener('mousemove', function(event) {
+            var x = event.clientX - canvas.getBoundingClientRect().left;
+            var y = event.clientY - canvas.getBoundingClientRect().top;
+            var pixel = ctx.getImageData(canvas.width*(x)/canvas.offsetWidth, canvas.height*(y)/canvas.offsetHeight, 1, 1).data;
+
+            var color = 'rgb(' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ')';
+            infoX.textContent = 'X: ' + Math.ceil(canvas.width*(x)/canvas.offsetWidth);
+            infoY.textContent = 'Y: ' + Math.ceil(canvas.height*(y)/canvas.offsetHeight);
+            infoR.textContent = 'R: ' + pixel[0];
+            infoG.textContent = 'G: ' + pixel[1];
+            infoB.textContent = 'B: ' + pixel[2];
+            colorSquare.style.borderBottomColor = color;
+            colorSquare.style.borderRightColor = color;
+        });
+        canvas.addEventListener('click', function(event) {
+            var x = event.clientX - canvas.getBoundingClientRect().left;
+            var y = event.clientY - canvas.getBoundingClientRect().top;
+
+            var pixel = ctx.getImageData(canvas.width*(x)/canvas.offsetWidth, canvas.height*(y)/canvas.offsetHeight, 1, 1).data;
+
+            var color = 'rgb(' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ')';
+            infoXfixed.textContent = 'X: ' + Math.ceil(canvas.width*(x)/canvas.offsetWidth);
+            infoYfixed.textContent = 'Y: ' + Math.ceil(canvas.height*(y)/canvas.offsetHeight);
+            infoRfixed.textContent = 'R: ' + pixel[0];
+            infoGfixed.textContent = 'G: ' + pixel[1];
+            infoBfixed.textContent = 'B: ' + pixel[2];
+            colorSquare.style.borderTopColor = color;
+            colorSquare.style.borderLeftColor = color;
+        });
+
+        // Scale
+        const scaleSelector = document.getElementById('scale-selector');
+
+        scaleSelector.addEventListener('change', function() {
+            const scale = parseFloat(scaleSelector.value);
+            scaleImage(scale);
+        });
+
+        function scaleImage(factor) {
+            canvas.style.removeProperty("width");
+            canvas.style.removeProperty("height");
+            if (canvas.width > canvas.height) {
+                canvas.style.width = factor*(canvasDomain.offsetWidth - 100) + 'px';
+            } else {
+                canvas.style.height = factor*(canvasDomain.offsetHeight) - 100 + 'px';
+            }
+        }
+
+        //Interpolation
+        const scaleButton = getElementById('sizeButton');
+
+        // scaleButton.addEventListener('click', function() {
+        //     console.log(img.width, img.height);
+        //     width.value = img.width
+        //     height.value = img.height
+        //     ratio = width.value / height.value
+        //     before.textContent = "Было: " + ((img.width * img.height) / 1000000).toFixed(2) + ' Мегапикселей'
+        //     after.textContent = "Стало: " + ((img.width * img.height) / 1000000).toFixed(2) + ' Мегапикселей'
+        //     dialog.showModal()
+        // });
+
+
+        
+        // const originCanvas = document.createElement('canvas');
+        // const originCtx = originCanvas.getContext('2d');
+        // originCanvas.width = img.width;
+        // originCanvas.height = img.height;
+        // originCtx.drawImage(img, 0, 0, originCanvas.width, originCanvas.height);
+        // const originalImageData = ctx.getImageData(0, 0, originCanvas.width, originCanvas.height);
+        // document.body.appendChild(originCanvas);
+        
+
+        // var canvas = document.getElementById("canvas");
+
+        // var infoX = document.getElementById("infoX");
+        // var infoY = document.getElementById("infoY");
+        // var infoR = document.getElementById("infoR");
+        // var infoG = document.getElementById("infoG");
+        // var infoB = document.getElementById("infoB");
+
+        // var infoXfixed = document.getElementById("infoXfixed");
+        // var infoYfixed = document.getElementById("infoYfixed");
+        // var infoRfixed = document.getElementById("infoRfixed");
+        // var infoGfixed = document.getElementById("infoGfixed");
+        // var infoBfixed = document.getElementById("infoBfixed");
+
+        // var ctx = canvas.getContext("2d" , { willReadFrequently: true });
+        // var colorSquare = document.getElementById("color")
+
+        // var loadButton = document.getElementById("loadButton");
+        // var urlInput = document.getElementById("urlInput");
+
+        // var before = document.getElementById("before");
+        // var after = document.getElementById("after");
+
+        // const colorButton = document.getElementById("colorButton");
+        // const colorWindow = document.getElementById('colorWindow');
+
+        // colorButton.addEventListener('click', function() {
+        //     colorWindow.style.display = colorWindow.style.display === 'none' ? '' : 'none';
+        // });
+
+        // var img = new Image()
+        // img.crossOrigin = 'anonymous'
+        
+        // img.onload = function() {
+        //     var widthScale = (canvas.width - 100) / img.width;
+        //     var heightScale = (canvas.height - 100) / img.height;
+        //     var scale = Math.min(widthScale, heightScale);
+        //     ctx.clearRect(0, 0, canvas.width, canvas.height);
+        //     ctx.drawImage(img, Math.max(50, (canvas.width - img.width * scale)/2), Math.max(50, (canvas.height - img.height * scale)/2), img.width * scale, img.height * scale);
+        // }
+
+        // loadButton.addEventListener("click", function() {
+        //     img.src = urlInput.value;
+        // })
+
+        // const scaleSelector = document.getElementById('scale-selector');
+
+        // scaleSelector.addEventListener('change', function() {
+        //     const scale = parseFloat(scaleSelector.value);
+        //     scaleImage(scale);
+        // });
+
+        // function scaleImage(factor) {
+        //     var widthScale = (canvas.width - 100) / img.width;
+        //     var heightScale = (canvas.height - 100) / img.height;
+        //     var scale = Math.min(widthScale, heightScale) * factor;
+        //     ctx.clearRect(0, 0, canvas.width, canvas.height);
+        //     ctx.drawImage(img, Math.max(50, (canvas.width - img.width * scale)/2), Math.max(50, (canvas.height - img.height * scale)/2), img.width * scale, img.height * scale);
+        // }   
+
+        // const scaleButton = document.getElementById('sizeButton');
+        // const dialog = document.getElementById('dialog');
+        // const done = document.getElementById('done');
+        // const close = document.getElementById('close');
+        // const width = document.getElementById('width');
+        // const height = document.getElementById('height');
+        // const download = document.getElementById('download');
+        // const maintain = document.getElementById('maintain-aspect-ratio')
+        // let ratio = width.value / height.value
+
+        // download.addEventListener('click', function() {
+        //     var link = document.createElement('a');
+        //     link.download = 'filename.png';
+        //     const originCanvas = document.createElement('canvas')
+        //     const originCtx = originCanvas.getContext('2d');
+        //     originCanvas.width = img.width;
+        //     originCanvas.height = img.height;
+        //     originCtx.drawImage(img, 0, 0);
+        //     document.body.appendChild(originCanvas);
+        //     link.href = originCanvas.toDataURL()
+        //     link.click();
+        //     document.body.removeChild(originCanvas);
+        // });
+
+        // const valueType = document.getElementById('valueType');
+
+        // valueType.addEventListener('change', function() {
+        //     if (valueType.value == 'pixels') {
+        //         width.value = img.width
+        //         height.value = img.height
+        //     }
+        //     if (valueType.value == 'percent') {
+        //         width.value = 100
+        //         height.value = 100
+        //     }
+        // })
+
+        // scaleButton.addEventListener('click', function() {
+        //     console.log(img.width, img.height);
+        //     width.value = img.width
+        //     height.value = img.height
+        //     ratio = width.value / height.value
+        //     before.textContent = "Было: " + ((img.width * img.height) / 1000000).toFixed(2) + ' Мегапикселей'
+        //     after.textContent = "Стало: " + ((img.width * img.height) / 1000000).toFixed(2) + ' Мегапикселей'
+        //     dialog.showModal()
+        // });
+
+        // width.addEventListener('input', function() {
+        //     after.textContent = "Стало: " + ((width.value * height.value) / 1000000).toFixed(2) + ' Мегапикселей'
+        //     if (maintain.checked) {
+        //         height.value = Math.round(width.value / ratio)
+        //         if (valueType.value == 'percent') {
+        //             height.value = width.value
+        //         }
+        //     }
+        // })
+
+        // height.addEventListener('input', function() {
+        //     after.textContent = "Стало: " + ((width.value * height.value) / 1000000).toFixed(2) + ' Мегапикселей'
+        //     if (maintain.checked) {
+        //         width.value = Math.round(height.value * ratio)
+        //         if (valueType.value == 'percent') {
+        //             width.value = height.value
+        //         }
+        //     }
+        // })
+
+        // done.addEventListener('click', function() {
+        //     // Интерполяцияяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя
+        //     dialog.close()
+        //     const originCanvas = document.createElement('canvas')
+        //     const originCtx = originCanvas.getContext('2d');
+        //     originCanvas.width = img.width;
+        //     originCanvas.height = img.height;
+        //     originCtx.drawImage(img, 0, 0, originCanvas.width, originCanvas.height);
+        //     const originalImageData = ctx.getImageData(0, 0, originCanvas.width, originCanvas.height);
+
+        //     const helpCanvas = document.createElement('canvas')
+        //     const helpCtx = helpCanvas.getContext('2d');
+        //     if (valueType.value == 'percent') {
+        //         helpCanvas.width = img.width * width.value / 100;
+        //         helpCanvas.height = img.height * height.value / 100;
+        //     }
+        //     if (valueType.value == 'pixels') {
+        //         helpCanvas.width = width.value;
+        //         helpCanvas.height = height.value;
+        //     }
+        //     const newImageData = helpCtx.createImageData(helpCanvas.width, helpCanvas.height);
+
+        //     for (let y = 0; y < helpCanvas.height; y++) {
+        //         for (let x = 0; x < helpCanvas.width; x++) {
+        //             const originalX = Math.round(x * (originCanvas.width / helpCanvas.width));
+        //             const originalY = Math.round(y * (originCanvas.height / helpCanvas.height));
+
+        //             const index = (originalY * originalImageData.width + originalX) * 4;
+        //             const r = originalImageData.data[index];
+        //             const g = originalImageData.data[index + 1];
+        //             const b = originalImageData.data[index + 2];
+        //             const a = originalImageData.data[index + 3];
+
+        //             const newIndex = (y * newImageData.width + x) * 4;
+        //             newImageData.data[newIndex] = r;
+        //             newImageData.data[newIndex + 1] = g;
+        //             newImageData.data[newIndex + 2] = b;
+        //             newImageData.data[newIndex + 3] = a;
+        //         }
+        //         }
+        //         helpCtx.putImageData(newImageData,0 ,0);
+        //         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        //         ctx.putImageData(newImageData, Math.max(50, (canvas.width - newImageData.width)/2), Math.max(50, (canvas.height - newImageData.height)/2));
+        //         img.src = helpCanvas.toDataURL()
+        // });
+        // close.addEventListener('click', function() {
+        //     dialog.close()
+        // })
+        
+        // //img.src = "https://helpx.adobe.com/content/dam/help/en/photoshop/using/convert-color-image-black-white/jcr_content/main-pars/before_and_after/image-before/Landscape-Color.jpg"
+        
+        // // img.onload = function () {
+        // //     var widthScale = canvas.width / img.width;
+        // //     var heightScale = canvas.height / img.height;
+        // //     var scale = Math.min(widthScale, heightScale);
+            
+        // //     ctx.drawImage(img, 0, 0, img.width * scale, img.height * scale);
+        // // }
+
+        
+        // document.getElementById('imageSelect').addEventListener('change', handleFileImage, false);
+
+        // function handleFileImage(e) {
+        //     var img = new Image()
+        //     img.crossOrigin = 'anonymous'
+        //     img.onload = function() {
+        //         var widthScale = canvas.width / img.width;
+        //         var heightScale = canvas.height / img.height;
+        //         var scale = Math.min(widthScale, heightScale);
+        //         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        //         ctx.drawImage(img, 0, 0, img.width * scale, img.height * scale);
+        //     }
+        //     img.src = URL.createObjectURL(e.target.files[0]);
+        // }
+
+        // //console.log(canvas.width, canvas.clientWidth, img.width, img.clientWidth)
+        // canvas.width = canvas.clientWidth
+        // canvas.height = canvas.clientHeight
+        // canvas.addEventListener('mousemove', function(event) {
+        //     var x = event.clientX - canvas.getBoundingClientRect().left;
+        //     var y = event.clientY - canvas.getBoundingClientRect().top;
+
+        //     var pixel = ctx.getImageData(x, y, 1, 1).data;
+
+        //     var color = 'rgb(' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ')';
+
+        //     infoX.textContent = 'X: ' + x;
+        //     infoY.textContent = 'Y: ' + Math.ceil(y);
+        //     infoR.textContent = 'R: ' + pixel[0];
+        //     infoG.textContent = 'G: ' + pixel[1];
+        //     infoB.textContent = 'B: ' + pixel[2];
+        //     colorSquare.style.borderBottomColor = color;
+        //     colorSquare.style.borderRightColor = color;
+        // });
+        // canvas.addEventListener('click', function(event) {
+        //     var x = event.clientX - canvas.getBoundingClientRect().left;
+        //     var y = event.clientY - canvas.getBoundingClientRect().top;
+
+        //     var pixel = ctx.getImageData(x, y, 1, 1).data;
+
+        //     var color = 'rgb(' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ')';
+        //     infoXfixed.textContent = 'X: ' + x;
+        //     infoYfixed.textContent = 'Y: ' + Math.ceil(y);
+        //     infoRfixed.textContent = 'R: ' + pixel[0];
+        //     infoGfixed.textContent = 'G: ' + pixel[1];
+        //     infoBfixed.textContent = 'B: ' + pixel[2];
+        //     colorSquare.style.borderTopColor = color;
+        //     colorSquare.style.borderLeftColor = color;
+        // });
+    </script>
+</body>
+</html>

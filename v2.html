@@ -114,6 +114,10 @@
             z-index: 900;
             background-color: white;
             width:300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
         }
         .color__content {
             padding: 10px;
@@ -228,7 +232,10 @@
             <input id="x2" type="number" value="255">
             <label for="y2">Y2</label>
             <input id="y2" type="number" value="255">
-            <button id="levelsDone">Levels Done</button>
+            <button id="levelsDone">Применить</button>
+            <button id="reset">Сбросить</button>
+            <label for="preview">Превью</label>
+            <input id="preview" type="checkbox">
             <canvas id="chart" width="300" height="300"></canvas>
         </div>
         <ul class="sidebar" style="list-style: none;">
@@ -481,11 +488,36 @@
         const x2 = document.getElementById('x2');
         const y2 = document.getElementById('y2');
 
+        const preview = document.getElementById('preview');
+
+        [x1, y1, x2, y2].forEach((n) => n.addEventListener('change', function() {
+            chartInstance.data.datasets[3].data = [
+                { x: 0, y: parseInt(y1.value) },
+                { x: parseInt(x1.value), y: parseInt(y1.value) },
+                { x: parseInt(x2.value), y: parseInt(y2.value) },
+                { x: 255, y: parseInt(y2.value) }]
+            if (preview.checked) {
+                drawImage();
+            }
+            chartInstance.update();
+        }))
+
+        preview.addEventListener('click', function() {
+            if (preview.checked) {
+                drawImage();
+            } else {
+                ctx.putImageData(startImage, 0, 0)
+            }
+        })
+        
+
+        let startImage = null
+
         levelsButton.addEventListener('click', function() {
             chartWindow.style.display = chartWindow.style.display === 'none' ? '' : 'none';
 
-            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imgData.data;
+            startImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = startImage.data;
 
             console.log(data)
 
@@ -584,10 +616,37 @@
 
     const levelsDone = document.getElementById("levelsDone");
 
-    levelsDone.addEventListener("click", drawImage);
+    levelsDone.addEventListener("click", () => {drawImage(); chartWindow.style.display = chartWindow.style.display === 'none' ? '' : 'none';
+        x1.value = 0;
+        x2.value = 255;
+        y1.value = 0;
+        y2.value = 255;
+        chartInstance.data.datasets[3].data = [
+                { x: 0, y: parseInt(y1.value) },
+                { x: parseInt(x1.value), y: parseInt(y1.value) },
+                { x: parseInt(x2.value), y: parseInt(y2.value) },
+                { x: 255, y: parseInt(y2.value) }]
+        chartInstance.update()
+    });
+
+    const reset = document.getElementById("reset");
+
+    reset.addEventListener("click", function(e) {
+        ctx.putImageData(startImage, 0, 0);
+        x1.value = 0;
+        x2.value = 255;
+        y1.value = 0;
+        y2.value = 255;
+        chartInstance.data.datasets[3].data = [
+                { x: 0, y: parseInt(y1.value) },
+                { x: parseInt(x1.value), y: parseInt(y1.value) },
+                { x: parseInt(x2.value), y: parseInt(y2.value) },
+                { x: 255, y: parseInt(y2.value) }]
+        chartInstance.update()
+    });
 
     function drawImage() {
-      chartWindow.style.display = chartWindow.style.display === 'none' ? '' : 'none';
+      ctx.putImageData(startImage, 0, 0);
       let lut = [];
       for (let i = 0; i < parseInt(x1.value); i++) {
         lut[i] = parseInt(y1.value);

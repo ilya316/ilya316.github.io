@@ -21,11 +21,10 @@
             height: calc(100% - 60px);
             margin: 20px 20px 0px 75px;
             background-color: rgb(45, 45, 45);
-            /* overflow: hidden; */
             position: relative;
             overflow: hidden;
         }
-        canvas {
+        .canvas {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -104,6 +103,17 @@
             right: 0;
             padding: 20px;
             box-shadow: 0 0 10px black;
+            z-index: 900;
+        }
+        .chart {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 20px;
+            box-shadow: 0 0 10px black;
+            z-index: 900;
+            background-color: white;
+            width:300px;
         }
         .color__content {
             padding: 10px;
@@ -112,6 +122,11 @@
         }
         .color__left, .color__right {
             padding: 10px;
+        }
+        .square1, .square2 {
+            width: 32px;
+            height: 32px;
+            background-color: black;
         }
 
         .modal {
@@ -185,21 +200,36 @@
         <div id="colorWindow" class="color__content" style="display: none;">
             <div class="color__left" style="border-right: 1px solid black ;">
                 <div class="square1" id="square1"></div>
+                ЛКМ для выбора
                 <p id="infoXsquare1">X: 0</p>
                 <p id="infoYsquare1">Y: 0</p><br>
-                <p id="infoRsquare1">R: 0</p>
-                <p id="infoGsquare1">G: 0</p>
-                <p id="infoBsquare1">B: 0</p>
+                <p id="infoRsquare1" style="margin-bottom: 10px;">R: 0</p>
+                <p id="infoGsquare1" style="margin-bottom: 10px;">G: 0</p>
+                <p id="infoBsquare1" style="margin-bottom: 10px;">B: 0</p>
+                <p id="contrast">Contrast: ?</p>
             </div>
             <div class="color__right">
                 <div class="square2" id="square2"></div>
+                CTRL + ЛКМ для выбора
                 <p id="infoXsquare2">X: 0</p>
                 <p id="infoYsquare2">Y: 0</p><br>
-                <p id="infoRsquare2">R: 0</p>
-                <p id="infoGsquare2">G: 0</p>
-                <p id="infoBsquare2">B: 0</p>
+                <p id="infoRsquare2" style="margin-bottom: 10px;">R: 0</p>
+                <p id="infoGsquare2" style="margin-bottom: 10px;">G: 0</p>
+                <p id="infoBsquare2" style="margin-bottom: 10px;">B: 0</p>
             </div>
             </div>
+        </div>
+        <div class="chart" id="chartWindow" style="display: none;">
+            <label for="x1">X1</label>
+            <input id="x1" type="number" value="0">
+            <label for="y1">Y1</label>
+            <input id="y1" type="number" value="0">
+            <label for="x2">X2</label>
+            <input id="x2" type="number" value="255">
+            <label for="y2">Y2</label>
+            <input id="y2" type="number" value="255">
+            <button id="levelsDone">Levels Done</button>
+            <canvas id="chart" width="300" height="300"></canvas>
         </div>
         <ul class="sidebar" style="list-style: none;">
             <li style="display: flex; flex-direction: column; align-items: center;">
@@ -228,16 +258,28 @@
                 </div>
             </li>
             <li>
+                <select id="speed">
+                    <option value="1" selected>1x</option>
+                    <option value="5">5x</option>
+                    <option value="10">10x</option>
+                </select>
+            </li>
+            <li>
                 <button id="colorButton">Пипетка</button>
+            </li>
+            <li>
+                <button id="levelsButton">Уровни</button>
             </li>
         </ul>
         <div id="canvasDomain" class="canvas_wrapper">
-            <!-- <canvas id="canvas" width="1920px" height="1080px">
-            </canvas>  -->
+            <canvas id="canvas" class="canvas">
+            </canvas> 
         </div>    
     </main>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        let canvas = document.createElement("canvas");
+
+        let canvas = document.getElementById("canvas");
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         const canvasDomain = document.getElementById("canvasDomain");
 
@@ -245,6 +287,7 @@
         img.crossOrigin = 'anonymous';
         let scale = 1;
         const loadButton = document.getElementById("loadButton");
+        const urlInput = document.getElementById("urlInput");
 
         loadButton.addEventListener("click", function() {
             img.src = urlInput.value;
@@ -252,7 +295,6 @@
             canvas.height = img.height;
             canvas.style.removeProperty("width");
             canvas.style.removeProperty("height");
-            canvasDomain.appendChild(canvas);
             ctx.drawImage(img, 0, 0);
             if (canvas.width > canvas.height) {
                 canvas.style.width = canvasDomain.offsetWidth - 100 + 'px';
@@ -277,6 +319,96 @@
             colorSquare.style.borderBottomColor = color;
             colorSquare.style.borderRightColor = color;
         });
+
+        function getRGB(color) {
+            var match = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(color);
+            return match ? {
+                r: parseInt(match[1]),
+                g: parseInt(match[2]),
+                b: parseInt(match[3])
+            } : null;
+        }
+
+        function rgbToXyz(R, G, B) {
+            var_R = parseFloat( R / 255 )        //R from 0 to 255
+            var_G = parseFloat( G / 255 )        //G from 0 to 255
+            var_B = parseFloat( B / 255 )        //B from 0 to 255
+
+            if ( var_R > 0.04045 ) {
+                var_R = Math.pow(( ( var_R + 0.055 ) / 1.055 ), 2.4)
+            }
+            else { 
+                var_R = var_R / 12.92
+            }
+            if ( var_G > 0.04045 ) { 
+                var_G = Math.pow(( ( var_G + 0.055 ) / 1.055 ), 2.4)
+            }
+            else {
+                var_G = var_G / 12.92
+            }
+            if ( var_B > 0.04045 ) {
+                 var_B = Math.pow(( ( var_B + 0.055 ) / 1.055 ), 2.4)
+            }
+            else {                   
+                var_B = var_B / 12.92
+            }
+
+            var_R = var_R * 100
+            var_G = var_G * 100
+            var_B = var_B * 100
+
+            X = var_R * 0.4124 + var_G * 0.3576 + var_B * 0.1805
+            Y = var_R * 0.2126 + var_G * 0.7152 + var_B * 0.0722
+            Z = var_R * 0.0193 + var_G * 0.1192 + var_B * 0.9505
+            return [X, Y, Z]
+        }
+
+        function rgbToLab(r, g, b) {
+            var r = r / 255,
+                g = g / 255,
+                b = b / 255,
+                x, y, z;
+
+            r = (r > 0.04045) ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+            g = (g > 0.04045) ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+            b = (b > 0.04045) ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+
+            x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
+            y = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 1.00000;
+            z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
+
+            x = (x > 0.008856) ? Math.pow(x, 1/3) : (7.787 * x) + 16/116;
+            y = (y > 0.008856) ? Math.pow(y, 1/3) : (7.787 * y) + 16/116;
+            z = (z > 0.008856) ? Math.pow(z, 1/3) : (7.787 * z) + 16/116;
+
+            return [(116 * y) - 16, 500 * (x - y), 200 * (y - z)]
+        }
+
+        function getContrastRatio(color1, color2) {
+            var rgb1 = getRGB(color1);
+            var rgb2 = getRGB(color2);
+
+            var brightness1 = getRelativeLuminance(rgb1);
+            var brightness2 = getRelativeLuminance(rgb2);
+
+            // Рассчитываем контрастность по формуле WCAG
+            var contrastRatio = (brightness1 + 0.05) / (brightness2 + 0.05);
+
+            return contrastRatio;
+        }
+
+        function getRelativeLuminance(rgb) {
+            var RsRGB = rgb.r / 255;
+            var GsRGB = rgb.g / 255;
+            var BsRGB = rgb.b / 255;
+
+            var R = RsRGB <= 0.03928 ? RsRGB / 12.92 : Math.pow((RsRGB + 0.055) / 1.055, 2.4);
+            var G = GsRGB <= 0.03928 ? GsRGB / 12.92 : Math.pow((GsRGB + 0.055) / 1.055, 2.4);
+            var B = BsRGB <= 0.03928 ? BsRGB / 12.92 : Math.pow((BsRGB + 0.055) / 1.055, 2.4);
+
+            return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+        }
+
         canvas.addEventListener('click', function(event) {
             var x = event.clientX - canvas.getBoundingClientRect().left;
             var y = event.clientY - canvas.getBoundingClientRect().top;
@@ -291,7 +423,298 @@
             infoBfixed.textContent = 'B: ' + pixel[2];
             colorSquare.style.borderTopColor = color;
             colorSquare.style.borderLeftColor = color;
+
+
+
+            if (!event.ctrlKey) {
+                var x = event.clientX - canvas.getBoundingClientRect().left;
+                var y = event.clientY - canvas.getBoundingClientRect().top;
+
+                var pixel = ctx.getImageData(canvas.width*(x)/canvas.offsetWidth, canvas.height*(y)/canvas.offsetHeight, 1, 1).data;
+
+                var color = 'rgb(' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ')';
+                infoXsquare1.textContent = 'X: ' + Math.ceil(canvas.width*(x)/canvas.offsetWidth);
+                infoYsquare1.textContent = 'Y: ' + Math.ceil(canvas.height*(y)/canvas.offsetHeight);
+                infoRsquare1.textContent = 'RGB: ' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2];
+                infoGsquare1.textContent = 'XYZ: ' + rgbToXyz(pixel[0],pixel[1],pixel[2]).map(n => " "+Math.round(n * 100) / 100 +'%');
+                infoBsquare1.textContent = 'Lab: ' + rgbToLab(pixel[0],pixel[1],pixel[2]).map(n => " "+Math.round(n * 100) / 100 +'');
+                square1.style.backgroundColor = color;
+                contrast.textContent = 'Contrast: ' + Math.round(getContrastRatio(square1.style.backgroundColor, square2.style.backgroundColor), 2);
+                if (Math.round(getContrastRatio(square1.style.backgroundColor, square2.style.backgroundColor)*100)/100 < 4.5) {
+                    contrast.style.color = 'rgb(255,0,0)';
+                } else {
+                    contrast.style.color = 'rgb(0,0,0)';
+                }
+            }
+
+            if (event.ctrlKey) {
+                var x = event.clientX - canvas.getBoundingClientRect().left;
+                var y = event.clientY - canvas.getBoundingClientRect().top;
+
+                var pixel = ctx.getImageData(canvas.width*(x)/canvas.offsetWidth, canvas.height*(y)/canvas.offsetHeight, 1, 1).data;
+
+                var color = 'rgb(' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ')';
+                infoXsquare2.textContent = 'X: ' + Math.ceil(canvas.width*(x)/canvas.offsetWidth);
+                infoYsquare2.textContent = 'Y: ' + Math.ceil(canvas.height*(y)/canvas.offsetHeight);
+                infoRsquare2.textContent = 'RGB: ' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2];
+                infoGsquare2.textContent = 'XYZ: ' + rgbToXyz(pixel[0],pixel[1],pixel[2]).map(n => " "+Math.round(n * 100) / 100 +'%');
+                infoBsquare2.textContent = 'Lab: ' + rgbToLab(pixel[0],pixel[1],pixel[2]).map(n => " "+Math.round(n * 100) / 100 +'');
+                square2.style.backgroundColor = color;
+                contrast.textContent = 'Contrast: ' + Math.round(getContrastRatio(square1.style.backgroundColor, square2.style.backgroundColor)*100)/100;
+                if (Math.round(getContrastRatio(square1.style.backgroundColor, square2.style.backgroundColor)*100)/100 < 4.5) {
+                    contrast.style.color = 'rgb(255,0,0)';
+                } else {
+                    contrast.style.color = 'rgb(0,0,0)';
+                }
+            // console.log(square1.style.backgroundColor, square2.style.backgroundColor)
+            }
         });
+        // LAB 4
+        const levelsButton = document.getElementById('levelsButton');
+        const chartWindow = document.getElementById('chartWindow');
+
+        const chart = document.getElementById("chart");
+        const chartctx = chart.getContext('2d');
+
+        const x1 = document.getElementById('x1');
+        const y1 = document.getElementById('y1');
+        const x2 = document.getElementById('x2');
+        const y2 = document.getElementById('y2');
+
+        levelsButton.addEventListener('click', function() {
+            chartWindow.style.display = chartWindow.style.display === 'none' ? '' : 'none';
+
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+
+            console.log(data)
+
+            let redChannel = new Array(256).fill(0);
+            let greenChannel = new Array(256).fill(0);
+            let blueChannel = new Array(256).fill(0);
+
+            for (let i = 0; i < data.length; i += 4) {
+                let red = data[i];
+                let green = data[i + 1];
+                let blue = data[i + 2];
+                redChannel[red]++;
+                greenChannel[green]++;
+                blueChannel[blue]++;
+            }
+
+            redChannel = normalizeHistogram(redChannel);
+            greenChannel = normalizeHistogram(greenChannel);
+            blueChannel = normalizeHistogram(blueChannel);
+
+            drawHistograms(redChannel, greenChannel, blueChannel)
+        });
+
+        function normalizeHistogram(histogram) {
+            const max = Math.max(...histogram);
+            return histogram.map((value) => (value / max) * 255);
+            }
+
+        
+        let chartInstance = null;
+
+        function drawHistograms(redHistogram, greenHistogram, blueHistogram) {
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            console.log(x1.value, y1.value, x2.value, y2.value)
+        chartInstance = new Chart(chartctx, {
+        type: "line",
+        data: {
+          labels: Array.from({ length: 256 }, (_, i) => i),
+          datasets: [
+            {
+              label: "Red",
+              data: redHistogram,
+              backgroundColor: "rgba(255, 0, 0, 0.8)",
+            },
+            {
+              label: "Green",
+              data: greenHistogram,
+              backgroundColor: "rgba(0, 255, 0, 0.8)",
+            },
+            {
+              label: "Blue",
+              data: blueHistogram,
+              backgroundColor: "rgba(0, 0, 255, 0.8)",
+            },
+            {
+              label: "line",
+              data: [
+                { x: 0, y: parseInt(y1.value) },
+                { x: parseInt(x1.value), y: parseInt(y1.value) },
+                { x: parseInt(x2.value), y: parseInt(y2.value) },
+                { x: 255, y: parseInt(y2.value) },
+              ],
+              borderColor: "rgba(0,0,0,1)",
+              borderWidth: 1,
+              fill: false,
+            },
+          ],
+        },
+        options: {
+          animation: false,
+          scales: {
+            x: {
+                type: "linear",
+                position: "bottom",
+                min: 0,
+                max: 260,
+                ticks: {
+                    stepSize: 15,
+                },
+            },
+            y: {
+                beginAtZero: true,
+                min: 0,
+                max: 260,
+                ticks: {
+                    stepSize: 15,
+                },
+            },
+          },
+        },
+      });
+    }
+
+    const levelsDone = document.getElementById("levelsDone");
+
+    levelsDone.addEventListener("click", drawImage);
+
+    function drawImage() {
+      chartWindow.style.display = chartWindow.style.display === 'none' ? '' : 'none';
+      let lut = [];
+      for (let i = 0; i < parseInt(x1.value); i++) {
+        lut[i] = parseInt(y1.value);
+      }
+      for (let i = parseInt(x1.value); i < parseInt(x2.value); i++) {
+        const slope = (parseInt(y2.value) - parseInt(y1.value)) / (parseInt(x2.value) - parseInt(x1.value));
+        let correctedValue = parseInt(y1.value) + slope * (i - parseInt(x1.value));
+        correctedValue = Math.max(0, Math.min(255, correctedValue));
+        lut[i] = correctedValue;
+      }
+      for (let i = x2.value; i < 256; i++) {
+        lut[i] = parseInt(y2.value);
+      }
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        data[i] = lut[data[i]];
+        data[i + 1] = lut[data[i + 1]];
+        data[i + 2] = lut[data[i + 2]];
+      }
+      ctx.putImageData(imageData, 0, 0);
+    }
+
+    //     const test = new Chart(ctx, {
+    //     type: "line",
+    //     data: {
+    //       labels: Array.from({ length: 256 }, (_, i) => i),
+    //       datasets: [
+    //         {
+    //           label: "Red",
+    //           data: redHistogram,
+    //           backgroundColor: "rgba(255, 0, 0, 0.8)",
+    //         },
+    //         {
+    //           label: "Green",
+    //           data: greenHistogram,
+    //           backgroundColor: "rgba(0, 255, 0, 0.8)",
+    //         },
+    //         {
+    //           label: "Blue",
+    //           data: blueHistogram,
+    //           backgroundColor: "rgba(0, 0, 255, 0.8)",
+    //         },
+    //         {
+    //           label: "Line",
+    //           data: [
+    //             { x: 0, y: this.points.y1 },
+    //             { x: this.points.x1, y: this.points.y1 },
+    //             { x: this.points.x2, y: this.points.y2 },
+    //             { x: 255, y: this.points.y2 },
+    //           ],
+    //           borderColor: "rgba(0,0,0,1)",
+    //           borderWidth: 1,
+    //           fill: false,
+    //         },
+    //       ],
+    //     },
+    //     options: {
+    //       animation: false,
+    //       scales: {
+    //         y: {
+    //           beginAtZero: true,
+    //         },
+    //       },
+    //     },
+    //   });
+
+
+        //Mover
+        var step = 1;
+        const speed = document.getElementById('speed');
+        speed.addEventListener('change', function() {
+            step = parseFloat(speed.value);
+        });
+        document.addEventListener("DOMContentLoaded", function() {
+
+            var topPosition = 50;
+            var leftPosition = 50;
+
+            function handleKeyPress(event) {
+                switch(event.keyCode) {
+                    case 37: // Стрелка влево
+                        leftPosition = Math.max(leftPosition - step, 0);
+                        break;
+                    case 38: // Стрелка вверх
+                        topPosition = Math.max(topPosition - step, 0);
+                        break;
+                    case 39: // Стрелка вправо
+                        leftPosition = Math.min(leftPosition + step, 100);
+                        break;
+                    case 40: // Стрелка вниз
+                        topPosition = Math.min(topPosition + step, 100);
+                        break;
+                }
+                canvas.style.top = topPosition + "%";
+                canvas.style.left = leftPosition + "%";
+            }
+
+            document.addEventListener("keydown", handleKeyPress);
+        });
+
+        //Color Picker v2
+
+        const colorButton = document.getElementById("colorButton");
+        const colorWindow = document.getElementById('colorWindow');
+
+        var infoXsquare1 = document.getElementById("infoXsquare1");
+        var infoYsquare1 = document.getElementById("infoYsquare1");
+        var infoRsquare1 = document.getElementById("infoRsquare1");
+        var infoGsquare1 = document.getElementById("infoGsquare1");
+        var infoBsquare1 = document.getElementById("infoBsquare1");
+
+        var infoXsquare2 = document.getElementById("infoXsquare2");
+        var infoYsquare2 = document.getElementById("infoYsquare2");
+        var infoRsquare2 = document.getElementById("infoRsquare2");
+        var infoGsquare2 = document.getElementById("infoGsquare2");
+        var infoBsquare2 = document.getElementById("infoBsquare2");
+
+        var square1 = document.getElementById("square1");
+        var square2 = document.getElementById('square2');
+
+        contrast = document.getElementById('contrast');
+
+        colorButton.addEventListener('click', function() {
+            colorWindow.style.display = colorWindow.style.display === 'none' ? '' : 'none';
+        });
+
 
         // Scale
         const scaleSelector = document.getElementById('scale-selector');
@@ -312,17 +735,117 @@
         }
 
         //Interpolation
-        const scaleButton = getElementById('sizeButton');
+        const scaleButton = document.getElementById('sizeButton');
+        const dialog = document.getElementById('dialog');
+        const done = document.getElementById('done');
+        const close = document.getElementById('close');
+        const width = document.getElementById('width');
+        const height = document.getElementById('height');
+        const download = document.getElementById('download');
+        const maintain = document.getElementById('maintain-aspect-ratio')
+        let ratio = width.value / height.value
 
-        // scaleButton.addEventListener('click', function() {
-        //     console.log(img.width, img.height);
-        //     width.value = img.width
-        //     height.value = img.height
-        //     ratio = width.value / height.value
-        //     before.textContent = "Было: " + ((img.width * img.height) / 1000000).toFixed(2) + ' Мегапикселей'
-        //     after.textContent = "Стало: " + ((img.width * img.height) / 1000000).toFixed(2) + ' Мегапикселей'
-        //     dialog.showModal()
-        // });
+        scaleButton.addEventListener('click', function() {
+            console.log(img.width, img.height);
+            width.value = img.width
+            height.value = img.height
+            ratio = width.value / height.value
+            before.textContent = "Было: " + ((canvas.width * canvas.height) / 1000000).toFixed(2) + ' Мегапикселей'
+            after.textContent = "Стало: " + ((canvas.width * canvas.height) / 1000000).toFixed(2) + ' Мегапикселей'
+            dialog.showModal()
+        });
+
+        const valueType = document.getElementById('valueType');
+
+        valueType.addEventListener('change', function() {
+            if (valueType.value == 'pixels') {
+                width.value = img.width
+                height.value = img.height
+            }
+            if (valueType.value == 'percent') {
+                width.value = 100
+                height.value = 100
+            }
+        });
+
+        width.addEventListener('input', function() {
+            after.textContent = "Стало: " + ((width.value * height.value) / 1000000).toFixed(2) + ' Мегапикселей'
+            if (maintain.checked) {
+                height.value = Math.round(width.value / ratio)
+                if (valueType.value == 'percent') {
+                    height.value = width.value
+                }
+            }
+        })
+
+        height.addEventListener('input', function() {
+            after.textContent = "Стало: " + ((width.value * height.value) / 1000000).toFixed(2) + ' Мегапикселей'
+            if (maintain.checked) {
+                width.value = Math.round(height.value * ratio)
+                if (valueType.value == 'percent') {
+                    width.value = height.value
+                }
+            }
+        })
+
+        done.addEventListener('click', function() {
+            // Интерполяция
+            dialog.close()
+            const originCanvas = document.createElement('canvas')
+            const originCtx = originCanvas.getContext('2d');
+            originCanvas.width = img.width;
+            originCanvas.height = img.height;
+            originCtx.drawImage(img, 0, 0, originCanvas.width, originCanvas.height);
+            const originalImageData = ctx.getImageData(0, 0, originCanvas.width, originCanvas.height);
+
+            const helpCanvas = document.createElement('canvas')
+            const helpCtx = helpCanvas.getContext('2d');
+            if (valueType.value == 'percent') {
+                helpCanvas.width = img.width * width.value / 100;
+                helpCanvas.height = img.height * height.value / 100;
+            }
+            if (valueType.value == 'pixels') {
+                helpCanvas.width = width.value;
+                helpCanvas.height = height.value;
+            }
+            const newImageData = helpCtx.createImageData(helpCanvas.width, helpCanvas.height);
+
+            for (let y = 0; y < helpCanvas.height; y++) {
+                for (let x = 0; x < helpCanvas.width; x++) {
+                    const originalX = Math.round(x * (originCanvas.width / helpCanvas.width));
+                    const originalY = Math.round(y * (originCanvas.height / helpCanvas.height));
+
+                    const index = (originalY * originalImageData.width + originalX) * 4;
+                    const r = originalImageData.data[index];
+                    const g = originalImageData.data[index + 1];
+                    const b = originalImageData.data[index + 2];
+                    const a = originalImageData.data[index + 3];
+
+                    const newIndex = (y * newImageData.width + x) * 4;
+                    newImageData.data[newIndex] = r;
+                    newImageData.data[newIndex + 1] = g;
+                    newImageData.data[newIndex + 2] = b;
+                    newImageData.data[newIndex + 3] = a;
+                }
+                }
+                helpCtx.putImageData(newImageData,0 ,0);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                canvas.width = helpCanvas.width;
+                canvas.height = helpCanvas.height;
+                ctx.putImageData(newImageData, 0, 0);
+                img.src = helpCanvas.toDataURL()
+        });
+        close.addEventListener('click', function() {
+            dialog.close()
+        })
+
+        //Download
+        download.addEventListener('click', function() {
+            var link = document.createElement('a');
+            link.download = 'filename.png';
+            link.href = canvas.toDataURL()
+            link.click();
+        });
 
 
         

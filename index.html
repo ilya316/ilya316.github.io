@@ -179,7 +179,7 @@
     <main>
         <div class="modal">
             <label for="imageSelect">Выберите картинку</label>
-            <input type="file" id="imageSelect" />
+            <input type="file" id="imageSelect" accept="image/*"/>
             <input type="text" id="urlInput"/>
             <button id="loadButton">Загрузить по ссылке</button>
             <button id="sizeButton">Изменить размер</button>
@@ -483,6 +483,34 @@
             }
         })
 
+        const imageSelect = document.getElementById("imageSelect");
+
+        imageSelect.addEventListener("change", function(event) {
+            console.log(event.target.files[0]);
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                img.src = e.target.result
+            }
+            img.onload = function() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.style.removeProperty("width");
+                canvas.style.removeProperty("height");
+                ctx.drawImage(img, 0, 0);
+                if (canvas.width > canvas.height) {
+                    canvas.style.width = canvasDomain.offsetWidth - 100 + 'px';
+                } else {
+                    canvas.style.height = canvasDomain.offsetHeight - 100 + 'px';
+                }
+            };
+            reader.readAsDataURL(file);
+        })
+
         //Color picker
         const colorSquare = document.getElementById('colorSquare')
         canvas.addEventListener('mousemove', function(event) {
@@ -664,6 +692,9 @@
         const preview = document.getElementById('preview');
 
         [x1, y1, x2, y2].forEach((n) => n.addEventListener('change', function() {
+            if (parseInt(x1.value) > parseInt(x2.value)) {
+                x1.value = parseInt(x2.value);
+            }
             chartInstance.data.datasets[3].data = [
                 { x: 0, y: parseInt(y1.value) },
                 { x: parseInt(x1.value), y: parseInt(y1.value) },
